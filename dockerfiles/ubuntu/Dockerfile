@@ -17,18 +17,14 @@ RUN set -e; for pkg in $(go list ./...); do \
 		go test -o "/tests/$(basename $pkg).test" -c $pkg; \
 	done
 
+RUN set -e; for test in /tests/*.test; do \
+		$test -ginkgo.v; \
+	done
+
 FROM ${base_image} AS resource
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt upgrade -y -o Dpkg::Options::="--force-confdef"
-RUN apt update \
-      && apt install -y --no-install-recommends \
-        tzdata \
-        ca-certificates \
-        unzip \
-        zip \
-      && rm -rf /var/lib/apt/lists/*
 COPY --from=builder assets/ /opt/resource/
-RUN chmod +x /opt/resource/*
+COPY --from=busybox:latest /bin/* /bin/
 
 FROM resource AS tests
 COPY --from=builder /tests /tests
@@ -41,8 +37,6 @@ ARG DOCKER_PUSH_PASSWORD
 ARG DOCKER_PUSH_REPO
 ARG GCR_PUSH_SERVICE_ACCOUNT_KEY
 ARG GCR_PUSH_REPO
-RUN set -e; for test in /tests/*.test; do \
-		$test -ginkgo.v; \
-	done
+
 
 FROM resource
